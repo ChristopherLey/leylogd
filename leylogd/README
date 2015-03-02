@@ -1,0 +1,7 @@
+leylogd instalation Requirements:
+1) binary file is placed in /usr/sbin/
+2) leylogd shell is placed in /etc/init.d/ && made executable
+3) SYSTEMV symbolics links updated:
+	- sudo update-rc.d leylogd defaults 97
+4) creation of /var/log/leyld.log := touch /var/log/leyld.log
+5) creation of /etc/leylogd/leyld.conf := echo START > /etc/leylogd/leyld.conf
