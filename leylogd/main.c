@@ -1,34 +1,36 @@
 //============================================================================
-// Name        : main.c
-// Author      : Christopher Ley
-// Version     : 1.0
-// Project     : leylogd
-// Created     : 24/02/15
-// Modified    : 24/02/15
-// Copyright   : Do not modify without express permission from the author
-// Description : main file for [leylogd] daemon process
-//=========================================================================
+// Name       	: main.c
+// Author      	: Christopher Ley
+// Version     	: 1.1.1
+// Project	   	: leylogd
+// Created     	: 24/02/15
+// Modified    	: 02/03/15
+// Copyright   	: Do not modify without express permission from the author
+// Description 	: main file for [leylogd_x86] daemon process x86 variant
+// Notes	   	: Version 1.0 first stable;
+//				-Implemented all init.d handlers and interrupts
+//				-Implemented timer handlers as skeleton for data sampling
+//			   	: Version 1.1.x Current development
+//============================================================================
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <signal.h>
-#include "become_daemon.h"
-#include <stdio.h>
-//#include <sys/types.h>
-
-static const char *LOG_FILE = "/var/log/leyld.log";
-static const char *CONFIG_FILE = "/etc/leylog/leyld.conf";
-
+#include <sys/time.h>
 #include <time.h>
+#include <signal.h>
+#include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include "become_daemon.h"
 
+/**************************** LOGGING FUNCTIONS  **************/
+/****** Static File Pointers ******/
 static FILE *logfp;		/* Log file stream */
+static const char *LOG_FILE = "/var/log/leyld.log";
+static const char *CONFIG_FILE = "/etc/leylogd/leyld.conf";
 
-/* Write a message to the log file. Handle variable length argument
-   lists, with an initial format string (like printf(3), but without
-   a trailing newline). Precede each message with a timestamp. */
-
+/****** Message Loggers ******/
+/* Log Message */
 static void logMessage(const char *format,...)
 {
 	va_list argList;
@@ -50,8 +52,7 @@ static void logMessage(const char *format,...)
 	fprintf(logfp, "\n");
 	va_end(argList);
 }
-
-/* Open the log file 'logFilename */
+/* Open Log file */
 static void logOpen(const char *logFilename)
 {
 	mode_t m; /*mode of file*/
@@ -64,84 +65,147 @@ static void logOpen(const char *logFilename)
 		exit(EXIT_FAILURE);
 	setbuf(logfp, NULL); /* Disable stdio buffering */
 
-	logMessage("Opened log file");
+//	logMessage("Opened log file");
 }
-
-/* Close the log File */
+/* Close Log file */
 static void logClose(void)
 {
 	logMessage("Closing log file");
 	fclose(logfp);
 }
+/**************************************************************/
 
-/* (Re)initialize from configuration file. In a real application
-   we would of course have some daemon initialization parameters in
-   this file. In this dummy version, we simply read a single line
-   from the file and write it to the log. */
-static void readConfigFile(const char *configFilename)
+/**************** CONFIGURATION HANDLERS **********************/
+static void readConfigFile(const char *configFilename, int *config)
 {
 	FILE *configfp;
 #define SBUF_SIZE 100
 	char str[SBUF_SIZE];
 
 	configfp = fopen(configFilename, "r");
-	if(configfp != NULL) {	/* Ignore nonexistent file */
-		if (fgets(str, SBUF_SIZE, configfp) == NULL)
-			str[0] = '\0';
-		else
-			str[strlen(str) - 1] = '\0';	/* Strip tailing */
-		logMessage("Read config file: %s", str);
+	if(configfp != NULL && fgets(str, SBUF_SIZE, configfp) != NULL) {	/* Ignore nonexistent file */
+		sscanf(str,"%*s %d%*c %*s %d",&config[0],&config[1]);
+		logMessage("Read config file: %d, %d", config[0],config[1]);
 		fclose(configfp);
+	} else {
+		logMessage("Couldn't open and/or read log file");
+		//Defaults
+		config[0] = 30;
+		config[1] = 1;
 	}
 }
+/**************************************************************/
 
-static volatile sig_atomic_t hupReceived = 0; /* Set nonzero on receipt of SIGHUP */
-static void sighupHandler(int sig)
+/************************ TIMER HANDLER ***********************/
+static int setTimer(struct itimerval *itv, int *config)
 {
-    hupReceived = 1;
+	itv->it_value.tv_sec = config[0];
+	itv->it_value.tv_usec = config[1];
+	itv->it_interval.tv_sec = config[0];
+	itv->it_interval.tv_usec = config[1];
+	if (setitimer(ITIMER_REAL, itv, 0) == -1){
+		return -1;
+	} else {
+		return 0;
+	}
 }
+/**************************************************************/
 
+/**************************** INTERRUPT HANDLERS **************/
+/****** Atomic interrupt flags ******/
+/* Set nonzero on receipt of interrupt,set as volatile so that the compiler
+ * dosen't store as a register value and helps with re-entrancy issues, the
+ * atomic identifier ensures the global flag is atomic,i.e. can be changed
+ * in one clock cycle! */
+static volatile sig_atomic_t termReceived = 0;
+static volatile sig_atomic_t alrmReceived = 0;
+static volatile sig_atomic_t hupReceived = 0;
+
+/****** Interrupt Handler Function ******/
+static void interruptHandler(int sig)
+{
+    /* A Quick interrupt handler to try to avoid re-entrancy */
+    switch(sig)
+    {
+        case SIGHUP:
+            hupReceived = 1;
+            break;
+        case SIGINT:
+        case SIGTERM:
+            termReceived = 1;
+            break;
+        case SIGALRM:
+            alrmReceived = 1;
+            break;
+    }
+}
+/**************************************************************/
+
+/**************************** MAIN ****************************/
 int main(int argc, char *argv[])
 {
-	const int SLEEP_TIME = 15;      /* Time to sleep between messages */
-	int count = 0;
-	int unslept;                    /* Time remaining in sleep interval */
-	struct sigaction sa;
+/* Set up interrupt handler */
+	struct sigaction act; // defined by signal.h
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	act.sa_handler = interruptHandler;
+	/* signals to handle */
+	sigaction(SIGHUP, &act, NULL); // catch hangup signal
+	sigaction(SIGTERM, &act, NULL); // catch terminate (--stop|stop) signal
+	sigaction(SIGINT, &act, NULL); // catch Ctrl=C signal
+	sigaction(SIGALRM, &act, NULL);// catch timer alarm
 
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART;
-	sa.sa_handler = sighupHandler;
-	if (sigaction(SIGHUP,&sa,NULL) == -1){
-		printf("Error: sigaction!");
-		exit(EXIT_FAILURE);
-	}
-
+/* Set up Daemon Process */
 	if(becomeDaemon(0) == -1){
+		logMessage("Daemonise Failure");
 		exit(EXIT_FAILURE);
 	}
 
+/* Open Log file */
+	int config[2];
 	logOpen(LOG_FILE);
-	readConfigFile(CONFIG_FILE);
-	logMessage("Successfully started");
+	readConfigFile(CONFIG_FILE,config);
+	int count;
+	if (argc > 1){
+		for(count = 1; count < argc; count++){
+			 logMessage(argv[count]);
+		}
+	}
 
-	unslept = SLEEP_TIME;
+/* Set up Timer */
+	struct itimerval itv;
+	/* Set timer values*/
+	if(setTimer(&itv,config) == -1){
+		logMessage("Fatal Timer error!");
+		exit(EXIT_FAILURE);
+	}
+
+
+	/* Final Message b4 loop*/
+	logMessage("Initialised");
 
 	for(;;){ /*ever*/
-		unslept = sleep(unslept);       /* Returns > 0 if interrupted */
-
-		if (hupReceived) {              /* If we got SIGHUP... */
-			hupReceived = 0;            /* Get ready for next SIGHUP */
+		if(termReceived != 0){
+			//TODO close file pointer for logging
+			termReceived = 0;
 			logClose();
-			logOpen(LOG_FILE);
-			readConfigFile(CONFIG_FILE);
-		}
-
-		if (unslept == 0) {             /* On completed interval */
-			count++;
-			logMessage("Main: %d", count);
-			unslept = SLEEP_TIME;       /* Reset interval */
+			exit(EXIT_SUCCESS);
+		}else if(alrmReceived != 0){
+			logMessage("Logging Data...");
+			alrmReceived = 0;
+			//TODO Data logging
+		}else if(hupReceived != 0){
+			logMessage("Hang-up Received");
+			readConfigFile(CONFIG_FILE,config);
+			// Reinitialise Parameters
+			if(setTimer(&itv,config) == -1){
+				logMessage("Fatal Timer error!");
+				exit(EXIT_FAILURE);
+			}
+			hupReceived = 0;
+		}else{
+			pause(); /* suspend until a signal is received.*/
 		}
 	}
-
 	exit(EXIT_SUCCESS);
 }
