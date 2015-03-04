@@ -3,5 +3,7 @@ leylogd instalation Requirements:
 2) leylogd shell is placed in /etc/init.d/ && made executable
 3) SYSTEMV symbolics links updated:
 	- sudo update-rc.d leylogd defaults 97
+3*) In newer Debian distros such as those on the Beaglebone black use:
+	- insserv leylogd
 4) creation of /var/log/leyld.log := touch /var/log/leyld.log
 5) creation of /etc/leylogd/leyld.conf := echo START > /etc/leylogd/leyld.conf

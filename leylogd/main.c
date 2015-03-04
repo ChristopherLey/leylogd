@@ -1,16 +1,17 @@
 //============================================================================
 // Name       	: main.c
-// Author      	: Christopher Ley
-// Version     	: 1.1.1
+// Author      	: Christopher Ley <christopher.ley@uon.edu.au>
+// Version     	: 1.2.0
 // Project	   	: leylogd
 // Created     	: 24/02/15
-// Modified    	: 02/03/15
-// Copyright   	: Do not modify without express permission from the author
-// Description 	: main file for [leylogd_x86] daemon process x86 variant
-// Notes	   	: Version 1.0 first stable;
+// Modified    	: 04/03/15
+// Copyright   	: Do not modify or distribute without express written permission
+//				: of the author
+// Description 	: main file for leylogd daemon process ARM variant
+// Notes	   	: Version 1.2.x  stable;
 //				-Implemented all init.d handlers and interrupts
-//				-Implemented timer handlers as skeleton for data sampling
-//			   	: Version 1.1.x Current development
+//				-Implemented timer handlers, with SIGHUP reload configuration
+//			   	: Version 1.2.0 Latest stable
 //============================================================================
 #include <stdlib.h>
 #include <unistd.h>
@@ -88,7 +89,7 @@ static void readConfigFile(const char *configFilename, int *config)
 		logMessage("Read config file: %d, %d", config[0],config[1]);
 		fclose(configfp);
 	} else {
-		logMessage("Couldn't open and/or read log file");
+		logMessage("Couldn't open and/or read configuration file");
 		//Defaults
 		config[0] = 30;
 		config[1] = 1;

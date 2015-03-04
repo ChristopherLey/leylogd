@@ -1,14 +1,16 @@
 #!/bin/bash
-# Start/Stop the leylogd_x86 daemon [Working as of 27 Feb 2015 - Mint host Ares]
+# Start/Stop the leylogd daemon [Working as of 04/03/2015 - host: @beaglebone]
 #
 ### BEGIN INIT INFO
-# Provides:          leylogd_x86
+# Provides:          leylogd
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: Battery sensor data logged daemon
-# Description:       leylogd is a program that manages the logging of the data from the battery sensor cape #							designed by Christopher Ley for the Beaglebone Black 
+# Description:       leylogd is a daemon program that manages the logging of the 
+#                     data from the battery sensor cape designed by Christopher Ley 
+#                     for the Beaglebone Black 
 ### END INIT INFO
 
 # Author: Christopher Ley <christopher.ley@uon.edu.au>
@@ -17,8 +19,8 @@
 # Do NOT "set -e"
 
 PATH=/bin:/usr/bin:/sbin:/usr/bin
-DESC="leylogd_x86 daemon"
-NAME=leylogd_x86
+DESC="leylogd daemon"
+NAME=leylogd
 DAEMON=/usr/sbin/$NAME
 #DAEMON_ARGS="--options args"
 PIDFILE=/var/run/$NAME.pid
