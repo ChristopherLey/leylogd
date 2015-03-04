@@ -1,18 +1,30 @@
 //============================================================================
 // Name       	: main.cpp
 // Author      	: Christopher Ley <christopher.ley@uon.edu.au>
-// Version     	: 1.3.0
+// Version     	: 1.3.2
 // Project	   	: leylogd
 // Created     	: 24/02/15
 // Modified    	: 04/03/15
 // Copyright   	: Do not modify or distribute without express written permission
 //				: of the author
 // Description 	: main file for leylogd daemon process ARM variant
-// Notes	   	: Version 1.2.x  stable;
-//				-Implemented all init.d handlers and interrupts
-//				-Implemented timer handlers, with SIGHUP reload configuration
-//			   	: Version 1.2.0 Latest stable
-//				: Version 1.3.x latest development
+// Notes	   	: leylogd responds to SIGHUP for timer adjustment, this means
+//				:  in order to change sampling time you need to (in this order):
+//				- 	echo "sec: <int seconds>, usec <int microseconds> "
+//				                      > /etc/leylogd/leyld.conf
+//				- 	kill -s 1 <PID of leylogd>
+// *WARNING: leyld.conf needs to receive EXACTLY that form of argument
+// *NOTE: <int second> is a integer second value i.e. 30 as is
+// *NOTE: <int microseconds> is a integer micro-second value i.e. 30
+//
+//				: Version 1.2.x  stable;
+//				- all init.d handlers and interrupts [stable v1.2]
+//				- timer handlers, with SIGHUP reload configuration [stable v1.2]
+//				: Version 1.3.x latest development;
+//				- TMP102 data logging [stable v1.3.0]
+//				- MPL3115A2 data logging [unstable v1.3.1]
+//				- independent logging file "/var/log/leyld.csv" [stable v1.3.1]
+//
 // GitHub		: https://github.com/ChristopherLey/leylogd.git
 //============================================================================
 #include <stdlib.h>
@@ -30,7 +42,9 @@
 /**************************** LOGGING FUNCTIONS  **************/
 /****** Static File Pointers ******/
 static FILE *logfp;		/* Log file stream */
+static FILE *datafp;    /* Data file stream */
 static const char *LOG_FILE = "/var/log/leyld.log";
+static const char *DATA_FILE = "var/log/leyld.csv";
 static const char *CONFIG_FILE = "/etc/leylogd/leyld.conf";
 
 /****** Message Loggers ******/
@@ -56,26 +70,68 @@ void logMessage(const char *format,...)
 	fprintf(logfp, "\n");
 	va_end(argList);
 }
+void dataLog(const char *format,...)
+{
+	/* stdarg.h macro */
+	va_list argList;
+	/*Timing*/
+	static struct timeval start;
+	struct timeval curr;
+	static int initial = 0; //Number of calls to this function
+	float time_precise = 0.0;
+
+	if (initial == 0){
+		//Initialise with header and timer
+		if (gettimeofday(&start, NULL) == -1){
+			logMessage("Error: gettimeofday; CallNum == 0");
+		} else {
+			logMessage("Data logging timer started");
+			initial = 1;
+			// dataLog expects a Header on first access
+			va_start(argList, format); /* stdarg.h macro */
+			vfprintf(datafp, format, argList);
+			fprintf(datafp, "\n");
+			va_end(argList);
+		}
+	}else {
+		// Normal function
+		if(gettimeofday(&curr, NULL) == -1){
+			logMessage("Data logging timer failure!");
+		} else {
+			time_precise = curr.tv_sec - start.tv_sec + (curr.tv_usec - start.tv_usec)/1000000.0;
+		}
+		//print to datafile
+		fprintf(datafp,"%f,",time_precise);
+		va_start(argList, format); /* stdarg.h macro */
+		vfprintf(datafp, format, argList);
+		fprintf(datafp, "\n");
+		va_end(argList);
+	}
+}
 /* Open Log file */
-static void logOpen(const char *logFilename)
+static void logOpen(const char *logFilename, const char *dataFilename)
 {
 	mode_t m; /*mode of file*/
 
 	m = umask(077); /* File mode creation mask */
 	logfp = fopen(logFilename, "a");
+	datafp = fopen(dataFilename, "a");
 	umask(m);
 
-	if(logfp == NULL)
+	if(logfp == NULL || datafp == NULL){
 		exit(EXIT_FAILURE);
+	}
 	setbuf(logfp, NULL); /* Disable stdio buffering */
+	setbuf(datafp, NULL); /* Disable stdio buffering */
 
 //	logMessage("Opened log file");
 }
 /* Close Log file */
 static void logClose(void)
 {
-	logMessage("Closing log file");
+	logMessage("Closing log and data file");
 	fclose(logfp);
+	fclose(datafp);
 }
 /**************************************************************/
 
@@ -156,18 +212,17 @@ int main(int argc, char *argv[])
 	/* signals to handle */
 	sigaction(SIGHUP, &act, NULL); // catch hangup signal
 	sigaction(SIGTERM, &act, NULL); // catch terminate (--stop|stop) signal
-	sigaction(SIGINT, &act, NULL); // catch Ctrl=C signal
+	sigaction(SIGINT, &act, NULL); // other terminate signal
 	sigaction(SIGALRM, &act, NULL);// catch timer alarm
 
 /* Set up Daemon Process */
 	if(becomeDaemon(0) == -1){
-		logMessage("Daemonise Failure");
 		exit(EXIT_FAILURE);
 	}
 
 /* Open Log file */
 	int config[2];
-	logOpen(LOG_FILE);
+	logOpen(LOG_FILE,DATA_FILE);
 	readConfigFile(CONFIG_FILE,config);
 	int count;
 	if (argc > 1){
@@ -176,13 +231,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
-/* Set up Timer */
+/* Set up Timers */
 	struct itimerval itv;
 	/* Set timer values*/
 	if(setTimer(&itv,config) == -1){
 		logMessage("Fatal Timer error!");
 		exit(EXIT_FAILURE);
 	}
+	dataLog("Time,Temperature"); // Write header to data csv file;
 
 /* Initialise TMP102 Sensor */
 	TMP102 TempSensor1(I2C1, Ground, Default_MSB, CR_8Hz_13bit);
@@ -192,18 +248,16 @@ int main(int argc, char *argv[])
 
 	for(;;){ /*ever*/
 		if(termReceived != 0){
-			//TODO close file pointer for logging
+			/* Close Program [SIGTERM || SIGINT] */
 			termReceived = 0;
 			logClose();
 			exit(EXIT_SUCCESS);
 		}else if(alrmReceived != 0){
-//			logMessage("Logging Data...");
-			if(TempSensor1.readTemperature() != 0){
-				logMessage("Failed Log!");
-			}
+			/* Data Logging [SIGALRM]*/
+			dataLog("%f",TempSensor1.readTemperature());
 			alrmReceived = 0;
-			//TODO Data logging
 		}else if(hupReceived != 0){
+			/* Re-initialise parameters [SIGHUP] */
 			logMessage("Hang-up Received");
 			readConfigFile(CONFIG_FILE,config);
 			// Reinitialise Parameters

@@ -38,7 +38,7 @@ enum TMP102_ADDR {
 	SCL		= 0x4b
 };
 
-extern void logMessage(const char *format,...);
+extern void logMessage(const char *format,...); //error reporting
 
 class TMP102 {
 
@@ -54,7 +54,7 @@ public:
 	TMP102(I2C_BUS bus, TMP102_ADDR address,TMP102_CONFIG_MSB msb, TMP102_CONFIG_LSB lsb);
 	int setConfigurationRegister(TMP102_CONFIG_MSB msb,TMP102_CONFIG_LSB lsb);
 	// Interface Functions
-	int readTemperature();
+	float readTemperature();
 
 	virtual ~TMP102(); // Destructor
 };

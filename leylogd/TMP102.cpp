@@ -1,7 +1,7 @@
 //============================================================================
 // Name        	: TMP102.h
 // Author      	: Christopher Ley <christopher.ley@uon.edu.au>
-// Version     	: 1.3.1
+// Version     	: 1.3.2
 // Project	   	: leylogd
 // Created     	: 04/03/15
 // Modified    	: 04/03/15
@@ -32,7 +32,7 @@ TMP102::TMP102(I2C_BUS bus, TMP102_ADDR address,TMP102_CONFIG_MSB msb, TMP102_CO
 	setConfigurationRegister(msb,lsb);
 }
 
-int TMP102::readTemperature(){
+float TMP102::readTemperature(){
 //	logMessage("Starting Temperature Read");
 	// pointer to device address
 	char namebuf[MAX_BUS];
@@ -61,15 +61,15 @@ int TMP102::readTemperature(){
 		return(4);
 	}
 	else{
+		/* Used for tuning */
 //		logMessage("Number of bytes read was %d",bytesRead);
-		logMessage("Raw Data (Hex): 0x%02x\t 0x%02x",this->dataBuffer[0],this->dataBuffer[1]);
-
+//		logMessage("Raw Data (Hex): 0x%02x\t 0x%02x",this->dataBuffer[0],this->dataBuffer[1]);
 		this->temperature = convertTemperature(this->dataBuffer[0],this->dataBuffer[1]);
-		logMessage("Temperature %f degC", this->temperature);
+//		logMessage("Temperature %f degC", this->temperature);
 	}
 
 	close(file);
-	return(0);
+	return(this->temperature);
 }
 
 int TMP102::setConfigurationRegister(TMP102_CONFIG_MSB msb,TMP102_CONFIG_LSB lsb){
