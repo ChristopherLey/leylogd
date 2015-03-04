@@ -1,7 +1,7 @@
 //============================================================================
-// Name       	: main.c
+// Name       	: main.cpp
 // Author      	: Christopher Ley <christopher.ley@uon.edu.au>
-// Version     	: 1.2.0
+// Version     	: 1.3.0
 // Project	   	: leylogd
 // Created     	: 24/02/15
 // Modified    	: 04/03/15
@@ -12,6 +12,8 @@
 //				-Implemented all init.d handlers and interrupts
 //				-Implemented timer handlers, with SIGHUP reload configuration
 //			   	: Version 1.2.0 Latest stable
+//				: Version 1.3.x latest development
+// GitHub		: https://github.com/ChristopherLey/leylogd.git
 //============================================================================
 #include <stdlib.h>
 #include <unistd.h>
@@ -23,6 +25,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include "become_daemon.h"
+#include "TMP102.h"
 
 /**************************** LOGGING FUNCTIONS  **************/
 /****** Static File Pointers ******/
@@ -32,7 +35,7 @@ static const char *CONFIG_FILE = "/etc/leylogd/leyld.conf";
 
 /****** Message Loggers ******/
 /* Log Message */
-static void logMessage(const char *format,...)
+void logMessage(const char *format,...)
 {
 	va_list argList;
 	const char *TIMESTAMP_FMT = "%F %X";	/* = YYYY-MM-DD HH:MM:SS */
@@ -181,6 +184,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+/* Initialise TMP102 Sensor */
+	TMP102 TempSensor1(I2C1, Ground, Default_MSB, CR_8Hz_13bit);
 
 	/* Final Message b4 loop*/
 	logMessage("Initialised");
@@ -192,7 +197,10 @@ int main(int argc, char *argv[])
 			logClose();
 			exit(EXIT_SUCCESS);
 		}else if(alrmReceived != 0){
-			logMessage("Logging Data...");
+//			logMessage("Logging Data...");
+			if(TempSensor1.readTemperature() != 0){
+				logMessage("Failed Log!");
+			}
 			alrmReceived = 0;
 			//TODO Data logging
 		}else if(hupReceived != 0){

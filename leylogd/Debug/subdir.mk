@@ -3,24 +3,27 @@
 ################################################################################
 
 # Add inputs and outputs from these tool invocations to the build variables 
-C_SRCS += \
-../become_daemon.c \
-../main.c 
+CPP_SRCS += \
+../TMP102.cpp \
+../become_daemon.cpp \
+../main.cpp 
 
 OBJS += \
+./TMP102.o \
 ./become_daemon.o \
 ./main.o 
 
-C_DEPS += \
+CPP_DEPS += \
+./TMP102.d \
 ./become_daemon.d \
 ./main.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
-%.o: ../%.c
+%.o: ../%.cpp
 	@echo 'Building file: $<'
-	@echo 'Invoking: Cross GCC Compiler'
-	arm-linux-gnueabihf-gcc-4.7 -I/usr/arm-linux-gnueabihf/include -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	@echo 'Invoking: Cross G++ Compiler'
+	arm-linux-gnueabihf-g++-4.7 -I/usr/arm-linux-gnueabihf/include/c++/4.7.3 -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

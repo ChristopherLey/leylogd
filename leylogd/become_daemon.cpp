@@ -1,12 +1,14 @@
 //============================================================================
-// Name        : become_daemon.c
-// Author      : Christopher Ley
-// Version     : 1.0
-// Project	   : leylogd
-// Created     : 24/02/15
-// Modified    : 24/02/15
-// Copyright   : Do not modify without express permission from the author
-// Description : Daemon process creation definition file
+// Name        	: become_daemon.cpp
+// Author      	: Christopher Ley <christopher.ley@uon.edu.au>
+// Version     	: 1.2
+// Project	   	: leylogd
+// Created     	: 24/02/15
+// Modified    	: 04/03/15
+// Copyright   	: Do not modify or distribute without express written permission
+//				: of the author
+// Description 	: Daemon process creation definition file
+// GitHub		: https://github.com/ChristopherLey/leylogd.git
 //===========================================================================
 
 #include <sys/stat.h>
