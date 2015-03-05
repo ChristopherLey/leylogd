@@ -1,10 +1,10 @@
 //============================================================================
 // Name        	: TMP102.h
 // Author      	: Christopher Ley <christopher.ley@uon.edu.au>
-// Version     	: 1.3.1
+// Version     	: 1.3.3
 // Project	   	: leylogd
 // Created     	: 04/03/15
-// Modified    	: 04/03/15
+// Modified    	: 05/03/15
 // Copyright   	: Do not modify or distribute without express written permission
 //				: of the author
 // Description 	: TMP102 header file

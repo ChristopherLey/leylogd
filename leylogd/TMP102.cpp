@@ -1,10 +1,10 @@
 //============================================================================
 // Name        	: TMP102.h
 // Author      	: Christopher Ley <christopher.ley@uon.edu.au>
-// Version     	: 1.3.2
+// Version     	: 1.3.3
 // Project	   	: leylogd
 // Created     	: 04/03/15
-// Modified    	: 04/03/15
+// Modified    	: 05/03/15
 // Copyright   	: Do not modify or distribute without express written permission
 //				: of the author
 // Description 	: TMP102 class definition file
@@ -44,7 +44,7 @@ float TMP102::readTemperature(){
 		return(1);
 	}
 	if (ioctl(file, I2C_SLAVE, I2CAddress) < 0){
-		logMessage("I2C_SALVE address %s failed",I2CAddress);
+		logMessage("I2C_SALVE address %s failed [TMP102]",I2CAddress);
 		return(2);
 	}
 	char buf[1] = {TEMP_REGISTER};

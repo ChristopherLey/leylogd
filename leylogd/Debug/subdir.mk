@@ -4,16 +4,19 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
+../MPL3115A2_Altimeter.cpp \
 ../TMP102.cpp \
 ../become_daemon.cpp \
 ../main.cpp 
 
 OBJS += \
+./MPL3115A2_Altimeter.o \
 ./TMP102.o \
 ./become_daemon.o \
 ./main.o 
 
 CPP_DEPS += \
+./MPL3115A2_Altimeter.d \
 ./TMP102.d \
 ./become_daemon.d \
 ./main.d 

@@ -1,10 +1,10 @@
 //============================================================================
 // Name       	: main.cpp
 // Author      	: Christopher Ley <christopher.ley@uon.edu.au>
-// Version     	: 1.3.2
+// Version     	: 1.3.3
 // Project	   	: leylogd
 // Created     	: 24/02/15
-// Modified    	: 04/03/15
+// Modified    	: 05/03/15
 // Copyright   	: Do not modify or distribute without express written permission
 //				: of the author
 // Description 	: main file for leylogd daemon process ARM variant
@@ -22,7 +22,7 @@
 //				- timer handlers, with SIGHUP reload configuration [stable v1.2]
 //				: Version 1.3.x latest development;
 //				- TMP102 data logging [stable v1.3.0]
-//				- MPL3115A2 data logging [unstable v1.3.1]
+//				- MPL3115A2 data logging [stable v1.3.3]
 //				- independent logging file "/var/log/leyld.csv" [stable v1.3.1]
 //
 // GitHub		: https://github.com/ChristopherLey/leylogd.git
@@ -38,6 +38,7 @@
 #include <string.h>
 #include "become_daemon.h"
 #include "TMP102.h"
+#include "MPL3115A2_Altimeter.h"
 
 /**************************** LOGGING FUNCTIONS  **************/
 /****** Static File Pointers ******/
@@ -238,13 +239,16 @@ int main(int argc, char *argv[])
 		logMessage("Fatal Timer error!");
 		exit(EXIT_FAILURE);
 	}
-	dataLog("Time,Temperature"); // Write header to data csv file;
+	dataLog("Time,Temperature_TMP102,Pressure_MPL,Temperature_MPL"); // Write header to data csv file;
 
 /* Initialise TMP102 Sensor */
 	TMP102 TempSensor1(I2C1, Ground, Default_MSB, CR_8Hz_13bit);
+/* Initialise MPL3115A2 Sensor */
+	MPL3115A2_Altimeter altimeter(I2C1,Standard);
 
 	/* Final Message b4 loop*/
 	logMessage("Initialised");
+	float temp_tmp102, temp_mpl, pressure_mpl;
 
 	for(;;){ /*ever*/
 		if(termReceived != 0){
@@ -254,7 +258,9 @@ int main(int argc, char *argv[])
 			exit(EXIT_SUCCESS);
 		}else if(alrmReceived != 0){
 			/* Data Logging [SIGALRM]*/
-			dataLog("%f",TempSensor1.readTemperature());
+			temp_tmp102 = TempSensor1.readTemperature(); // TODO Change to pointer input;
+			altimeter.readSensor(Barometer,&pressure_mpl,&temp_mpl);
+			dataLog("%f,%f,%f",temp_tmp102,pressure_mpl,temp_mpl);
 			alrmReceived = 0;
 		}else if(hupReceived != 0){
 			/* Re-initialise parameters [SIGHUP] */
