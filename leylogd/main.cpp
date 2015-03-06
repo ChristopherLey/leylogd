@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 /* Initialise TMP102 Sensor */
 	TMP102 TempSensor1(I2C1, Ground, Default_MSB, CR_8Hz_13bit);
 /* Initialise MPL3115A2 Sensor */
-	MPL3115A2_Altimeter altimeter(I2C1,Standard);
+	MPL3115A2_Altimeter altimeter(I2C1,Standard,Barometer);
 
 	/* Final Message b4 loop*/
 	logMessage("Initialised");
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
 		}else if(alrmReceived != 0){
 			/* Data Logging [SIGALRM]*/
 			temp_tmp102 = TempSensor1.readTemperature(); // TODO Change to pointer input;
-			altimeter.readSensor(Barometer,&pressure_mpl,&temp_mpl);
+			altimeter.readSensor(&pressure_mpl,&temp_mpl);
 			dataLog("%f,%f,%f",temp_tmp102,pressure_mpl,temp_mpl);
 			alrmReceived = 0;
 		}else if(hupReceived != 0){

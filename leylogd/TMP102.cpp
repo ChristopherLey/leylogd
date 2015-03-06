@@ -90,7 +90,7 @@ int TMP102::setConfigurationRegister(TMP102_CONFIG_MSB msb,TMP102_CONFIG_LSB lsb
 		logMessage("Failure to write TMP102 configuration register.");
 	}
 	close(file);
-	logMessage("Finished TMP102 Configuration Resister Write");
+	logMessage("Succesfully Configured TMP102 (config: %02x->{%02x,%02x})",CONFIG_REGISTER,msb,lsb);
 	return(0);
 }
 

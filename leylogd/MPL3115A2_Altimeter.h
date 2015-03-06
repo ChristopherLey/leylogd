@@ -93,13 +93,14 @@ private:
 	int I2CBus;
 	char dataBuffer[MPL3115A2_I2C_BUFFER];
 	char CtrlRegState;
+	STATE readState;
 public:
 	//Constructor
-	MPL3115A2_Altimeter(I2C_BUS bus,I2C_ADDR addr);
+	MPL3115A2_Altimeter(I2C_BUS bus,I2C_ADDR addr,STATE readtype);
 	//Destructor
 	virtual ~MPL3115A2_Altimeter();
 	//Interface Functions
-	int readSensor(STATE readtype,float *pressure,float *temp);
+	int readSensor(float *pressure,float *temp);
 
 };
 
